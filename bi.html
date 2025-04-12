@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的笔记本</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #4a90e2;
+            --danger-color: #e74c3c;
+            --background-color: #f5f7fa;
+            --text-color: #2c3e50;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+            background-color: white;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            height: calc(100vh - 40px);
+        }
+
+        .notes-list {
+            border-right: 1px solid #eef2f7;
+            padding-right: 25px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .note-item {
+            padding: 15px;
+            margin-bottom: 12px;
+            background-color: #fff;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid #eef2f7;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .note-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-color: var(--primary-color);
+        }
+
+        .note-item.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .note-item .title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .note-item small {
+            opacity: 0.8;
+            font-size: 0.85em;
+        }
+
+        .editor-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
+        #note-title {
+            padding: 15px;
+            font-size: 1.3em;
+            border: none;
+            border-bottom: 2px solid #eef2f7;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            transition: var(--transition);
+            font-weight: 600;
+        }
+
+        #note-title:focus {
+            outline: none;
+            border-bottom-color: var(--primary-color);
+        }
+
+        #note-content {
+            padding: 20px;
+            flex-grow: 1;
+            border: none;
+            background-color: #f8fafc;
+            border-radius: var(--border-radius);
+            resize: none;
+            font-size: 1.1em;
+            line-height: 1.6;
+            transition: var(--transition);
+        }
+
+        #note-content:focus {
+            outline: none;
+            background-color: #fff;
+            box-shadow: inset 0 0 0 2px var(--primary-color);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #357abd;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 2px solid #eef2f7;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            font-size: 1em;
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        #notes-container {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 5px;
+        }
+
+        #notes-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #notes-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        #notes-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        #notes-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        .new-note-btn {
+            margin-bottom: 20px;
+        }
+
+        .material-icons {
+            font-size: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .note-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a0aec0;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .auth-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--background-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .auth-box {
+            background: white;
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-box h2 {
+            margin-bottom: 20px;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-color);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eef2f7;
+            border-radius: var(--border-radius);
+            font-size: 1em;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .auth-switch a {
+            color: var(--primary-color);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: space-between;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .admin-panel {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .admin-panel h3 {
+            margin-bottom: 15px;
+            color: var(--text-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .create-user-form {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: var(--border-radius);
+            display: none;
+        }
+
+        .create-user-form.show {
+            display: block;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .admin-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .admin-toggle input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .user-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eef2f7;
+        }
+
+        .user-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-item .user-info-admin {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-item .admin-badge {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+
+        .delete-account-btn {
+            background-color: transparent;
+            color: var(--danger-color);
+            padding: 8px 15px;
+            font-size: 0.9em;
+        }
+
+        .delete-account-btn:hover {
+            background-color: #fee2e2;
+        }
+
+        .user-info .username {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .logout-btn {
+            padding: 8px 15px;
+            font-size: 0.9em;
+            background-color: #f8fafc;
+            color: var(--text-color);
+        }
+
+        .logout-btn:hover {
+            background-color: #edf2f7;
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .forgot-password {
+            text-align: right;
+            margin-top: 10px;
+        }
+
+        .forgot-password a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+
+        .security-questions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eef2f7;
+        }
+
+        .security-questions select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eef2f7;
+            border-radius: var(--border-radius);
+            font-size: 1em;
+            margin-bottom: 10px;
+            background-color: white;
+            transition: var(--transition);
+        }
+
+        .security-questions select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .back-to-login {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-color);
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+
+        .back-to-login:hover {
+            color: var(--primary-color);
+        }
+
+        .success-message {
+            color: #2ecc71;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div id="auth-container" class="auth-container">
+        <div class="auth-box">
+            <div id="login-form-container">
+                <h2 id="auth-title">登录</h2>
+                <form id="auth-form" onsubmit="handleAuth(event)">
+                    <div class="form-group">
+                        <label for="username">用户名</label>
+                        <input type="text" id="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    <div class="forgot-password">
+                        <a href="#" onclick="showForgotPassword()">忘记密码？</a>
+                    </div>
+                    <div id="error-message" class="error-message"></div>
+                    <button type="submit" class="btn-primary" style="width: 100%">
+                        <i class="material-icons">login</i>
+                        <span id="auth-button-text">登录</span>
+                    </button>
+                    <div class="auth-switch">
+                        <a id="auth-switch-link" onclick="toggleAuthMode()">没有账号？立即注册</a>
+                    </div>
+                </form>
+            </div>
+
+            <div id="register-security-container" style="display: none;">
+                <a href="#" class="back-to-login" onclick="showLoginForm()">
+                    <i class="material-icons">arrow_back</i>
+                    返回登录
+                </a>
+                <h2>设置安全问题</h2>
+                <form id="security-form" onsubmit="handleSecurityQuestions(event)">
+                    <div class="form-group">
+                        <label for="security-question1">安全问题 1</label>
+                        <select id="security-question1" required>
+                            <option value="">请选择安全问题</option>
+                            <option value="pet">您的第一只宠物叫什么名字？</option>
+                            <option value="school">您上的第一所学校叫什么名字？</option>
+                            <option value="city">您的出生城市是哪里？</option>
+                        </select>
+                        <input type="text" id="security-answer1" placeholder="答案" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="security-question2">安全问题 2</label>
+                        <select id="security-question2" required>
+                            <option value="">请选择安全问题</option>
+                            <option value="mother">您母亲的姓名是什么？</option>
+                            <option value="book">您最喜欢的书籍是什么？</option>
+                            <option value="color">您最喜欢的颜色是什么？</option>
+                        </select>
+                        <input type="text" id="security-answer2" placeholder="答案" required>
+                    </div>
+                    <div id="security-error" class="error-message"></div>
+                    <button type="submit" class="btn-primary" style="width: 100%">
+                        <i class="material-icons">security</i>
+                        完成注册
+                    </button>
+                </form>
+            </div>
+
+            <div id="forgot-password-container" style="display: none;">
+                <a href="#" class="back-to-login" onclick="showLoginForm()">
+                    <i class="material-icons">arrow_back</i>
+                    返回登录
+                </a>
+                <h2>找回密码</h2>
+                <form id="forgot-password-form" onsubmit="handleForgotPassword(event)">
+                    <div class="form-group">
+                        <label for="forgot-username">用户名</label>
+                        <input type="text" id="forgot-username" required>
+                    </div>
+                    <div id="security-questions-container" style="display: none;">
+                        <div class="form-group">
+                            <label id="question1-label"></label>
+                            <input type="text" id="answer1" required>
+                        </div>
+                        <div class="form-group">
+                            <label id="question2-label"></label>
+                            <input type="text" id="answer2" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-password">新密码</label>
+                            <input type="password" id="new-password" required>
+                        </div>
+                    </div>
+                    <div id="forgot-error-message" class="error-message"></div>
+                    <div id="success-message" class="success-message"></div>
+                    <button type="submit" class="btn-primary" style="width: 100%">
+                        <i class="material-icons">lock_reset</i>
+                        <span id="forgot-password-button">验证用户名</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="container" style="display: none;">
+        <div class="notes-list">
+            <div class="user-info">
+                <span class="username" id="current-user"></span>
+                <div class="user-actions">
+                    <button class="delete-account-btn" onclick="confirmDeleteAccount()">
+                        <i class="material-icons">person_remove</i>
+                        删除账号
+                    </button>
+                    <button class="logout-btn" onclick="logout()">
+                        <i class="material-icons">logout</i>
+                        退出
+                    </button>
+                </div>
+            </div>
+            <div id="admin-panel" class="admin-panel" style="display: none;">
+                <h3>
+                    用户管理
+                    <button class="btn-primary btn-small" onclick="toggleCreateUserForm()">
+                        <i class="material-icons">person_add</i>
+                        创建用户
+                    </button>
+                </h3>
+                <div id="create-user-form" class="create-user-form">
+                    <form onsubmit="handleCreateUser(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="new-username">用户名</label>
+                                <input type="text" id="new-username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">密码</label>
+                                <input type="password" id="new-password" required>
+                            </div>
+                        </div>
+                        <div class="admin-toggle">
+                            <input type="checkbox" id="is-admin">
+                            <label for="is-admin">设为管理员</label>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="admin-security-question1">安全问题 1</label>
+                                <select id="admin-security-question1" required>
+                                    <option value="">请选择安全问题</option>
+                                    <option value="pet">您的第一只宠物叫什么名字？</option>
+                                    <option value="school">您上的第一所学校叫什么名字？</option>
+                                    <option value="city">您的出生城市是哪里？</option>
+                                </select>
+                                <input type="text" id="admin-security-answer1" placeholder="答案" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="admin-security-question2">安全问题 2</label>
+                                <select id="admin-security-question2" required>
+                                    <option value="">请选择安全问题</option>
+                                    <option value="mother">您母亲的姓名是什么？</option>
+                                    <option value="book">您最喜欢的书籍是什么？</option>
+                                    <option value="color">您最喜欢的颜色是什么？</option>
+                                </select>
+                                <input type="text" id="admin-security-answer2" placeholder="答案" required>
+                            </div>
+                        </div>
+                        <div id="create-user-error" class="error-message"></div>
+                        <button type="submit" class="btn-primary" style="width: 100%">
+                            <i class="material-icons">add_circle</i>
+                            创建用户
+                        </button>
+                    </form>
+                </div>
+                <div id="user-list" class="user-list"></div>
+            </div>
+            <div class="search-box">
+                <i class="material-icons">search</i>
+                <input type="text" id="search-input" placeholder="搜索笔记...">
+            </div>
+            <button class="btn-primary new-note-btn" onclick="createNewNote()">
+                <i class="material-icons">add</i>新建笔记
+            </button>
+            <div id="notes-container"></div>
+        </div>
+        <div class="editor-section">
+            <input type="text" id="note-title" placeholder="笔记标题">
+            <textarea id="note-content" placeholder="在这里输入笔记内容..."></textarea>
+            <div class="button-group">
+                <button class="btn-primary" onclick="saveNote()">
+                    <i class="material-icons">save</i>保存
+                </button>
+                <button class="btn-danger" onclick="deleteNote()">
+                    <i class="material-icons">delete</i>删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isLoginMode = true;
+        let currentUser = null;
+        let notes = [];
+        let currentNoteId = null;
+        let tempRegisterData = null;
+        let forgotPasswordStep = 1;
+        const ADMIN_USERNAME = 'admin'; // 管理员用户名
+        const ADMIN_PASSWORD = 'jiruixiang'; // 管理员默认密码
+
+        // 加密工具函数
+        function encrypt(text, key) {
+            return CryptoJS.AES.encrypt(text, key).toString();
+        }
+
+        // 解密工具函数
+        function decrypt(ciphertext, key) {
+            try {
+                const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+                return bytes.toString(CryptoJS.enc.Utf8);
+            } catch (e) {
+                console.error('解密失败:', e);
+                return '';
+            }
+        }
+
+        // 密码哈希函数
+        function hashPassword(password) {
+            return CryptoJS.SHA256(password.toString()).toString();
+        }
+
+        // 生成用户专用的加密密钥
+        function generateUserKey(username, password) {
+            return CryptoJS.SHA256(username + password.toString()).toString();
+        }
+
+        // 切换登录/注册模式
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').textContent = isLoginMode ? '登录' : '注册';
+            document.getElementById('auth-button-text').textContent = isLoginMode ? '登录' : '注册';
+            document.getElementById('auth-switch-link').textContent = isLoginMode ? '没有账号？立即注册' : '已有账号？立即登录';
+            document.getElementById('error-message').textContent = '';
+        }
+
+        // 处理登录/注册
+        function handleAuth(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (isLoginMode) {
+                login(username, password);
+            } else {
+                register(username, password);
+            }
+        }
+
+        // 登录
+        function login(username, password) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const hashedPassword = hashPassword(password);
+            const user = users.find(u => u.username === username && u.password === hashedPassword);
+            
+            if (user) {
+                const userKey = generateUserKey(username, password);
+                currentUser = { 
+                    username: user.username, 
+                    id: user.id,
+                    key: userKey,
+                    isAdmin: user.isAdmin || false
+                };
+                localStorage.setItem('currentUser', JSON.stringify({
+                    username: user.username,
+                    id: user.id,
+                    isAdmin: user.isAdmin || false
+                }));
+                showApp();
+                loadUserNotes();
+            } else {
+                // 添加详细的调试信息
+                console.log('登录失败:', {
+                    inputUsername: username,
+                    inputHashedPassword: hashedPassword,
+                    allUsers: users,
+                    foundUser: users.find(u => u.username === username)
+                });
+                document.getElementById('error-message').textContent = '用户名或密码错误';
+            }
+        }
+
+        // 注册
+        function register(username, password) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            // 验证用户名长度
+            if (username.length < 3) {
+                document.getElementById('error-message').textContent = '用户名长度至少为3位';
+                return;
+            }
+            
+            if (users.some(u => u.username === username)) {
+                document.getElementById('error-message').textContent = '用户名已存在';
+                return;
+            }
+
+            tempRegisterData = {
+                username,
+                password: hashPassword(password)
+            };
+
+            // 显示安全问题设置界面
+            document.getElementById('login-form-container').style.display = 'none';
+            document.getElementById('register-security-container').style.display = 'block';
+        }
+
+        // 处理安全问题设置
+        function handleSecurityQuestions(event) {
+            event.preventDefault();
+            
+            const securityData = {
+                question1: document.getElementById('security-question1').value,
+                answer1: hashPassword(document.getElementById('security-answer1').value.toLowerCase().trim()),
+                question2: document.getElementById('security-question2').value,
+                answer2: hashPassword(document.getElementById('security-answer2').value.toLowerCase().trim())
+            };
+
+            // 验证安全问题
+            if (!securityData.question1 || !securityData.question2) {
+                document.getElementById('security-error').textContent = '请选择安全问题';
+                return;
+            }
+
+            // 验证安全问题答案
+            if (!document.getElementById('security-answer1').value.trim() || 
+                !document.getElementById('security-answer2').value.trim()) {
+                document.getElementById('security-error').textContent = '请填写安全问题答案';
+                return;
+            }
+
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const newUser = {
+                id: Date.now(),
+                username: tempRegisterData.username,
+                password: tempRegisterData.password,
+                security: securityData,
+                isAdmin: false,
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                users.push(newUser);
+                localStorage.setItem('users', JSON.stringify(users));
+
+                const userKey = generateUserKey(tempRegisterData.username, tempRegisterData.password);
+                currentUser = { 
+                    username: newUser.username, 
+                    id: newUser.id,
+                    key: userKey,
+                    isAdmin: false
+                };
+                localStorage.setItem('currentUser', JSON.stringify({
+                    username: newUser.username,
+                    id: newUser.id,
+                    isAdmin: false
+                }));
+
+                tempRegisterData = null;
+                showApp();
+                alert('注册成功！');
+            } catch (error) {
+                console.error('注册失败:', error);
+                document.getElementById('security-error').textContent = '注册失败，请重试';
+            }
+        }
+
+        // 显示找回密码界面
+        function showForgotPassword() {
+            document.getElementById('login-form-container').style.display = 'none';
+            document.getElementById('forgot-password-container').style.display = 'block';
+            document.getElementById('security-questions-container').style.display = 'none';
+            document.getElementById('forgot-error-message').textContent = '';
+            document.getElementById('success-message').textContent = '';
+            document.getElementById('forgot-username').value = '';
+            document.getElementById('answer1').value = '';
+            document.getElementById('answer2').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('forgot-password-button').textContent = '验证用户名';
+            forgotPasswordStep = 1;
+        }
+
+        // 显示登录界面
+        function showLoginForm() {
+            document.getElementById('login-form-container').style.display = 'block';
+            document.getElementById('register-security-container').style.display = 'none';
+            document.getElementById('forgot-password-container').style.display = 'none';
+            document.getElementById('error-message').textContent = '';
+            tempRegisterData = null;
+            forgotPasswordStep = 1;
+        }
+
+        // 处理找回密码
+        function handleForgotPassword(event) {
+            event.preventDefault();
+            const forgotErrorMsg = document.getElementById('forgot-error-message');
+            const successMsg = document.getElementById('success-message');
+            
+            if (forgotPasswordStep === 1) {
+                const username = document.getElementById('forgot-username').value;
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const user = users.find(u => u.username === username);
+
+                if (!user) {
+                    forgotErrorMsg.textContent = '用户名不存在';
+                    return;
+                }
+
+                if (!user.security) {
+                    forgotErrorMsg.textContent = '该账户未设置安全问题，无法找回密码';
+                    return;
+                }
+
+                // 显示安全问题
+                document.getElementById('question1-label').textContent = getQuestionText(user.security.question1);
+                document.getElementById('question2-label').textContent = getQuestionText(user.security.question2);
+                document.getElementById('security-questions-container').style.display = 'block';
+                document.getElementById('forgot-password-button').textContent = '重置密码';
+                forgotPasswordStep = 2;
+                
+                // 清除错误信息
+                forgotErrorMsg.textContent = '';
+                successMsg.textContent = '';
+            } else {
+                const username = document.getElementById('forgot-username').value;
+                const answer1 = document.getElementById('answer1').value.toLowerCase().trim();
+                const answer2 = document.getElementById('answer2').value.toLowerCase().trim();
+                const newPassword = document.getElementById('new-password').value;
+
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const userIndex = users.findIndex(u => u.username === username);
+                
+                if (userIndex === -1) {
+                    forgotErrorMsg.textContent = '用户名不存在';
+                    return;
+                }
+
+                const user = users[userIndex];
+                
+                // 验证安全问题答案
+                const hashedAnswer1 = hashPassword(answer1);
+                const hashedAnswer2 = hashPassword(answer2);
+                
+                if (hashedAnswer1 === user.security.answer1 && 
+                    hashedAnswer2 === user.security.answer2) {
+                    // 更新密码
+                    users[userIndex].password = hashPassword(newPassword);
+                    localStorage.setItem('users', JSON.stringify(users));
+                    
+                    successMsg.textContent = '密码重置成功！3秒后返回登录界面';
+                    forgotErrorMsg.textContent = '';
+                    
+                    // 清除输入框
+                    document.getElementById('answer1').value = '';
+                    document.getElementById('answer2').value = '';
+                    document.getElementById('new-password').value = '';
+                    
+                    // 3秒后返回登录界面
+                    setTimeout(() => {
+                        showLoginForm();
+                    }, 3000);
+                } else {
+                    forgotErrorMsg.textContent = '安全问题答案错误，请仔细核对';
+                }
+            }
+        }
+
+        // 获取安全问题文本
+        function getQuestionText(questionKey) {
+            const questions = {
+                pet: '您的第一只宠物叫什么名字？',
+                school: '您上的第一所学校叫什么名字？',
+                city: '您的出生城市是哪里？',
+                mother: '您母亲的姓名是什么？',
+                book: '您最喜欢的书籍是什么？',
+                color: '您最喜欢的颜色是什么？'
+            };
+            return questions[questionKey] || questionKey;
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            notes = [];
+            currentNoteId = null;
+            showAuth();
+        }
+
+        // 显示应用界面
+        function showApp() {
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('app-container').style.display = 'grid';
+            document.getElementById('current-user').textContent = currentUser.username + 
+                (currentUser.isAdmin ? ' (管理员)' : '');
+            
+            // 如果是管理员，显示管理面板
+            if (currentUser.isAdmin) {
+                document.getElementById('admin-panel').style.display = 'block';
+                renderUserList();
+            } else {
+                document.getElementById('admin-panel').style.display = 'none';
+            }
+        }
+
+        // 显示登录界面
+        function showAuth() {
+            document.getElementById('auth-container').style.display = 'flex';
+            document.getElementById('app-container').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        // 加载用户笔记
+        function loadUserNotes() {
+            const encryptedNotes = localStorage.getItem(`notes_${currentUser.id}`);
+            if (!encryptedNotes) {
+                notes = [];
+            } else {
+                try {
+                    const decryptedData = decrypt(encryptedNotes, currentUser.key);
+                    notes = JSON.parse(decryptedData || '[]');
+                } catch (e) {
+                    console.error('笔记解密失败:', e);
+                    notes = [];
+                }
+            }
+            renderNotes();
+        }
+
+        // 保存用户笔记
+        function saveToLocalStorage() {
+            const encryptedData = encrypt(JSON.stringify(notes), currentUser.key);
+            localStorage.setItem(`notes_${currentUser.id}`, encryptedData);
+        }
+
+        function createNewNote() {
+            const note = {
+                id: Date.now(),
+                title: '新笔记',
+                content: '',
+                createdAt: new Date().toISOString()
+            };
+            notes.unshift(note);
+            currentNoteId = note.id;
+            saveToLocalStorage();
+            renderNotes();
+            loadNote(note);
+        }
+
+        function saveNote() {
+            const title = document.getElementById('note-title').value;
+            const content = document.getElementById('note-content').value;
+            
+            if (!currentNoteId) {
+                createNewNote();
+                return;
+            }
+
+            const noteIndex = notes.findIndex(note => note.id === currentNoteId);
+            if (noteIndex !== -1) {
+                notes[noteIndex] = {
+                    ...notes[noteIndex],
+                    title,
+                    content,
+                    updatedAt: new Date().toISOString()
+                };
+                saveToLocalStorage();
+                renderNotes();
+            }
+        }
+
+        function deleteNote() {
+            if (!currentNoteId) return;
+            
+            if (confirm('确定要删除这个笔记吗？')) {
+                notes = notes.filter(note => note.id !== currentNoteId);
+                saveToLocalStorage();
+                renderNotes();
+                clearEditor();
+                currentNoteId = null;
+            }
+        }
+
+        function loadNote(note) {
+            currentNoteId = note.id;
+            document.getElementById('note-title').value = note.title;
+            document.getElementById('note-content').value = note.content;
+            
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.id === String(note.id)) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        function clearEditor() {
+            document.getElementById('note-title').value = '';
+            document.getElementById('note-content').value = '';
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('notes-container');
+            container.innerHTML = '';
+            
+            if (notes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="material-icons">note_add</i>
+                        <p>还没有笔记，开始创建吧！</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            notes.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'note-item';
+                noteElement.dataset.id = note.id;
+                if (note.id === currentNoteId) {
+                    noteElement.classList.add('active');
+                }
+                
+                const date = new Date(note.createdAt);
+                const formattedDate = new Intl.DateTimeFormat('zh-CN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).format(date);
+                
+                noteElement.innerHTML = `
+                    <div class="title">${note.title}</div>
+                    <small>${formattedDate}</small>
+                `;
+                
+                noteElement.onclick = () => loadNote(note);
+                container.appendChild(noteElement);
+            });
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredNotes = notes.filter(note => 
+                note.title.toLowerCase().includes(searchTerm) || 
+                note.content.toLowerCase().includes(searchTerm)
+            );
+            renderFilteredNotes(filteredNotes);
+        });
+
+        function renderFilteredNotes(filteredNotes) {
+            const container = document.getElementById('notes-container');
+            container.innerHTML = '';
+            
+            if (filteredNotes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="material-icons">search_off</i>
+                        <p>没有找到匹配的笔记</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            filteredNotes.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'note-item';
+                noteElement.dataset.id = note.id;
+                if (note.id === currentNoteId) {
+                    noteElement.classList.add('active');
+                }
+                
+                const date = new Date(note.createdAt);
+                const formattedDate = new Intl.DateTimeFormat('zh-CN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).format(date);
+                
+                noteElement.innerHTML = `
+                    <div class="title">${note.title}</div>
+                    <small>${formattedDate}</small>
+                `;
+                
+                noteElement.onclick = () => loadNote(note);
+                container.appendChild(noteElement);
+            });
+        }
+
+        let autoSaveTimeout;
+        document.getElementById('note-title').addEventListener('input', () => {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(saveNote, 1000);
+        });
+
+        document.getElementById('note-content').addEventListener('input', () => {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(saveNote, 1000);
+        });
+
+        // 检查是否已登录
+        async function checkAuth() {
+            initAdminAccount(); // 确保管理员账号存在
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                document.getElementById('auth-container').style.display = 'flex';
+                document.getElementById('app-container').style.display = 'none';
+                document.getElementById('username').value = user.username;
+                document.getElementById('error-message').textContent = '请重新输入密码以继续';
+            }
+        }
+
+        // 初始化
+        checkAuth();
+
+        // 初始化管理员账号
+        function initAdminAccount() {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            if (!users.some(u => u.username === ADMIN_USERNAME)) {
+                const adminUser = {
+                    id: Date.now(),
+                    username: ADMIN_USERNAME,
+                    password: hashPassword(ADMIN_PASSWORD),
+                    isAdmin: true,
+                    security: {
+                        question1: 'admin',
+                        answer1: hashPassword('admin'),
+                        question2: 'admin',
+                        answer2: hashPassword('admin')
+                    },
+                    createdAt: new Date().toISOString()
+                };
+                users.push(adminUser);
+                localStorage.setItem('users', JSON.stringify(users));
+                console.log('管理员账号已初始化');
+            }
+        }
+
+        // 渲染用户列表
+        function renderUserList() {
+            try {
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const userList = document.getElementById('user-list');
+                userList.innerHTML = '';
+
+                if (users.length === 0) {
+                    userList.innerHTML = '<div class="empty-state">暂无用户</div>';
+                    return;
+                }
+
+                users.forEach(user => {
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-item';
+                    const createdAt = user.createdAt ? new Date(user.createdAt).toLocaleString() : '未知时间';
+                    userItem.innerHTML = `
+                        <div class="user-info-admin">
+                            <span>${user.username}</span>
+                            ${user.isAdmin ? '<span class="admin-badge">管理员</span>' : ''}
+                            <small style="margin-left: 10px; color: #666;">创建时间: ${createdAt}</small>
+                        </div>
+                        ${!user.isAdmin ? `
+                            <button class="btn-danger btn-small" onclick="deleteUser('${user.username}')">
+                                <i class="material-icons">delete</i>
+                                删除
+                            </button>
+                        ` : ''}
+                    `;
+                    userList.appendChild(userItem);
+                });
+            } catch (error) {
+                console.error('渲染用户列表失败:', error);
+                document.getElementById('user-list').innerHTML = 
+                    '<div class="error-message">加载用户列表失败，请刷新页面重试</div>';
+            }
+        }
+
+        // 删除用户（管理员功能）
+        function deleteUser(username) {
+            if (!currentUser.isAdmin) return;
+            
+            if (confirm(`确定要删除用户 "${username}" 吗？`)) {
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const userIndex = users.findIndex(u => u.username === username);
+                
+                if (userIndex !== -1) {
+                    // 删除用户的笔记
+                    const userId = users[userIndex].id;
+                    localStorage.removeItem(`notes_${userId}`);
+                    
+                    // 删除用户
+                    users.splice(userIndex, 1);
+                    localStorage.setItem('users', JSON.stringify(users));
+                    
+                    renderUserList();
+                }
+            }
+        }
+
+        // 确认删除当前账号
+        function confirmDeleteAccount() {
+            if (currentUser.isAdmin) {
+                alert('管理员账号不能被删除');
+                return;
+            }
+
+            if (confirm('确定要删除您的账号吗？此操作不可恢复，所有笔记都将被删除。')) {
+                deleteAccount();
+            }
+        }
+
+        // 删除当前账号
+        function deleteAccount() {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const userIndex = users.findIndex(u => u.username === currentUser.username);
+            
+            if (userIndex !== -1) {
+                // 删除用户的笔记
+                localStorage.removeItem(`notes_${currentUser.id}`);
+                
+                // 删除用户
+                users.splice(userIndex, 1);
+                localStorage.setItem('users', JSON.stringify(users));
+                
+                // 退出登录
+                logout();
+            }
+        }
+
+        // 切换创建用户表单显示
+        function toggleCreateUserForm() {
+            const form = document.getElementById('create-user-form');
+            form.classList.toggle('show');
+            if (!form.classList.contains('show')) {
+                // 清空表单
+                document.getElementById('new-username').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('is-admin').checked = false;
+                document.getElementById('admin-security-question1').value = '';
+                document.getElementById('admin-security-question2').value = '';
+                document.getElementById('admin-security-answer1').value = '';
+                document.getElementById('admin-security-answer2').value = '';
+                document.getElementById('create-user-error').textContent = '';
+            }
+        }
+
+        // 处理创建用户
+        function handleCreateUser(event) {
+            event.preventDefault();
+            
+            if (!currentUser.isAdmin) {
+                alert('只有管理员可以创建用户');
+                return;
+            }
+
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-password').value;
+            const isAdmin = document.getElementById('is-admin').checked;
+            const errorElement = document.getElementById('create-user-error');
+
+            // 验证用户名
+            if (username.length < 3) {
+                errorElement.textContent = '用户名长度至少为3位';
+                return;
+            }
+
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            // 检查用户名是否存在
+            if (users.some(u => u.username === username)) {
+                errorElement.textContent = '用户名已存在';
+                return;
+            }
+
+            // 获取安全问题数据
+            const securityData = {
+                question1: document.getElementById('admin-security-question1').value,
+                answer1: hashPassword(document.getElementById('admin-security-answer1').value.toLowerCase().trim()),
+                question2: document.getElementById('admin-security-question2').value,
+                answer2: hashPassword(document.getElementById('admin-security-answer2').value.toLowerCase().trim())
+            };
+
+            // 验证安全问题
+            if (!securityData.question1 || !securityData.question2) {
+                errorElement.textContent = '请选择安全问题';
+                return;
+            }
+
+            // 验证安全问题答案
+            if (!document.getElementById('admin-security-answer1').value.trim() || 
+                !document.getElementById('admin-security-answer2').value.trim()) {
+                errorElement.textContent = '请填写安全问题答案';
+                return;
+            }
+
+            // 创建新用户
+            const newUser = {
+                id: Date.now(),
+                username,
+                password: hashPassword(password),
+                isAdmin: isAdmin,
+                security: securityData,
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                users.push(newUser);
+                localStorage.setItem('users', JSON.stringify(users));
+
+                // 更新用户列表
+                renderUserList();
+                
+                // 清空并隐藏表单
+                toggleCreateUserForm();
+
+                // 显示成功提示
+                alert(`用户 "${username}" 创建成功！${isAdmin ? '（管理员）' : ''}`);
+            } catch (error) {
+                console.error('创建用户失败:', error);
+                errorElement.textContent = '创建用户失败，请重试';
+            }
+        }
+    </script>
+</body>
+</html> 
